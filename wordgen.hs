@@ -39,4 +39,9 @@ fractureWord [] = []
 fractureWord (a:[]) = [([a], '\0')]
 fractureWord (a:b:[]) = [([a], b), ([a, b], '\0')]
 fractureWord (a:b:c:[]) = [([a], b), ([a,b], c), ([a,b,c], '\0')]
---fractureWord (a:b:c:xs) = [([a], b), ([a,b], c), ([a,b,c], '\0')]
+fractureWord list@(a:b:c:_) =
+    [([a], b), ([a,b], c)] ++ fractureWord' list
+
+fractureWord' :: String -> [(String, Char)]
+fractureWord' (a:b:c:[]) = [([a,b,c], '\0')]
+fractureWord' (a:next@(b:c:d:_)) = ([a,b,c], d) : fractureWord' next
