@@ -1,7 +1,8 @@
 module Main where
 
-import System.Random
 import qualified Data.Map as M
+import System.Random
+import Control.Monad
 
 -- Words are generated using a Markov chain, one character at a
 -- time. The probabilities are stored in a lookup table.
@@ -9,10 +10,11 @@ type Chain = M.Map State CharDistribution
 
 -- The state just contains the previous three characters, or fewer if
 -- we are near the beginning of a word.
+-- TODO: word length should be stored in the state, too.
 type State = String
 
 -- The distribution is not normalized.
-type CharDistribution = [(Char, Int)]
+type CharDistribution = M.Map Char Int
 
 -- Eg. An empty string returns the distribution of first letters, and
 -- a two-character string returns the distribution of the third letter
@@ -22,25 +24,85 @@ type CharDistribution = [(Char, Int)]
 -- TODO: We could also keep other things in the state, like number of
 -- characters so far, number of syllables, etc.
 
-main = putStrLn $ show 3
+
+-- TODO: parse command line options instead of hard-coding this
+engchain     = trainChainFrom "data/en/en-US.dic"
+ruchain      = trainChainFrom "data/ru/ru.txt"
+klingonchain = trainChainFrom "data/klingon/klingon.txt"
+gcitieschain = trainChainFrom "data/cities/germancities.txt"
+jcitieschain = trainChainFrom "data/cities/japancities.txt"
+
+main = do
+  chain <- jcitieschain
+  let words = map (fst . (flip genWord chain)) (map mkStdGen [0..100])
+  mapM_ putStrLn words
+
+
+genWord :: RandomGen g => g -> Chain -> (String, g)
+genWord rgen chain = genWord' rgen "" chain
+
+genWord' :: RandomGen g => g -> State -> Chain -> (String, g)
+genWord' rgen state chain =
+  let next = case (M.lookup state chain) of
+         Nothing -> ('\NUL', rgen)
+         Just cd -> genChar rgen cd
+      in
+    case next of
+      ('\NUL', newrgen) -> ("", newrgen)
+      (c, newrgen)      ->
+        (c:rest, finalrgen) where
+          (rest, finalrgen) = genWord' newrgen (nextState state c) chain
+
+-- We assume a non-empty distribution is given.
+genChar :: RandomGen g => g -> CharDistribution -> (Char, g)
+genChar rgen cd = (getNth n alist, newgen)
+  where
+    (n, newgen) = randomR (1, total) rgen
+    alist = M.assocs cd
+    total = foldr ((+) . snd) 0 alist
+    getNth :: Int -> [(Char, Int)] -> Char
+    getNth n pool = let (ch, count) = head pool in
+      if n <= count then ch else getNth (n-count) (tail pool)
+
+
+nextState :: State -> Char -> State
+nextState state nextChar
+  | length state < 3 = state ++ [nextChar]
+  | otherwise        = tail state ++ [nextChar]
+
+
+-- Read a file, one word per line.
+trainChainFrom :: String -> IO (Chain)
+trainChainFrom filename = do
+  contents <- readFile filename
+  return $ makeChain $ lines contents
+  
 
 -- Train a Markov chain using a list of "example" words.
 makeChain :: [String] -> Chain
-makeChain wordlist = foldr scanword M.empty wordlist
-  where scanword word map =
-          M.insert [head word] [(head word, 1)] map
+makeChain wordlist = foldr insertPoint M.empty (concatMap fractureWord wordlist)
+  where insertPoint (state, sampleChar) chain = M.insert state
+          (case M.lookup state chain of
+              Nothing -> M.fromList [(sampleChar, 1)]
+              Just cdist -> addToCharDistribution sampleChar 1 cdist)
+          chain
+        addToCharDistribution :: Char -> Int -> CharDistribution -> CharDistribution
+        addToCharDistribution ch i cdist =
+          case M.lookup ch cdist of
+              Nothing -> M.insert ch i cdist
+              Just j -> M.insert ch (i+j) cdist
 
 -- Break down a word into 3-character sequences and return the
 -- sequences together with the letters that follow each. Example:
 -- fractureWord "Dodo" = [("",'o'), ("D", 'o'), ("Do", 'd'),
 --                        ("Dod", 'o'), ("odo", '\0')]
-fractureWord :: String -> [(String, Char)]
-fractureWord [] = []
-fractureWord (a:[]) = [([a], '\0')]
-fractureWord (a:b:[]) = [([a], b), ([a, b], '\0')]
-fractureWord (a:b:c:[]) = [([a], b), ([a,b], c), ([a,b,c], '\0')]
+fractureWord :: String -> [(State, Char)]
+fractureWord [] =         [([], '\0')]
+fractureWord (a:[]) =     [([], a), ([a], '\0')]
+fractureWord (a:b:[]) =   [([], a), ([a], b), ([a, b], '\0')]
+fractureWord (a:b:c:[]) = [([], a), ([a], b), ([a,b], c), ([a,b,c], '\0')]
 fractureWord list@(a:b:c:_) =
-    [([a], b), ([a,b], c)] ++ fractureWord' list
+    [([], a), ([a], b), ([a,b], c)] ++ fractureWord' list
 
 fractureWord' :: String -> [(String, Char)]
 fractureWord' (a:b:c:[]) = [([a,b,c], '\0')]
