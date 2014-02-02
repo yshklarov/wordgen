@@ -15,75 +15,72 @@ Note that data structures are currently very inefficient, so you may have to adj
 - Command line options are not supported, so too many things are hard-coded.
 - It's very slow and eats a ton of memory.
 - Word length is not taken into account: often words get way too long.
-- There is no way to adjust the algorithm dynamically, eg. keep four characters in the state instead of three.
 
 # Examples
 
-The following examples were generated using the files in the `data/` directory.
+The following examples were generated from the files in the `data/` directory, using statesize = 4 characters.
 
 German cities:
 
-    Klein Wolfsbrockbrach
-    Bulandern
-    Pönig
-    Heckin-Bad Heide
-    Wurlochshöhe
-    Mettelsbrunn
-    Ersfeld
-    Schow
-    Kienbach
-    Blöckig
+    Muggardenhof
+    Eichel
+    Schwein
+    Kaiserloh
+    Bisch
+    Prinz-Marxgrün
+    Hildwesthal-Zell am Main
+    Warnsteinasäge
+    Großefehlbach
+    Blöckelberg
 
 Japanese cities:
 
-    Shirakiharuzawa
-    Nakozan
-    Kamikutsu
-    Ginzan
-    Toki
-    Oyamachi
-    Kawashi
-    Itakura
-    Yusanagamatomiyama
-    Shimoara
-    Nagatanohamanochi
-    Kashimashi
+    Nisemoto
+    Kuja
+    Hiranagu
+    Umusa
+    Shiri
+    Matsu
+    Izuo-kitanori
+    Atsu
+    Suehiro
+    Nishifukubara
 
 English words:
 
-    erreinvers
-    offstartuplians
-    unoflux
-    excludermultificide
-    premaine
-    vendochrome
-    exped
-    pent
-    whitmentic
-    embrogryptimo
+    refacetic
+    biometriche
+    impotentinal
+    reverstatoes
+    blepsis
+    interpiest
+    stetholops
+    churization
+    iliases
+    serone
 
 Russian words:
 
-    ноженными
-    идусь
-    кулерато
-    накропомнилась
-    ого
-    оглашаешь
-    приками
-    подполопамяточатленном
-    разонном
-    сопанные
+    прыснутыми
+    разрастланду
+    стланными
+    сверяющее
+    улучшенными
+    акклиматься
+    вытрясутствующейся
+    габардинице
+    задвигнутыми
+    извещаете
 
 Klingon words:
 
-    tlhuQ
-    rojmeH tIq
-    per yuD
-    ngan
-    moghmoHwI'
-    jach
-    chetwI'
-    bochHomwI'
-    QeD
-    DuSaQ
+    tIjwI'ghom
+    ragh
+    por
+    ngIq
+    mIllogh
+    jIr
+    chamwI'
+    Sev
+    Hochlogh
+    Dugh

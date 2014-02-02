@@ -32,8 +32,15 @@ klingonchain = trainChainFrom "data/klingon/klingon.txt"
 gcitieschain = trainChainFrom "data/cities/germancities.txt"
 jcitieschain = trainChainFrom "data/cities/japancities.txt"
 
+-- The number of characters to keep as state when generating words.
+-- Must be at least 1. Larger values will generate more realistic
+-- words, but if it's too large then the words will simply be exact
+-- copies from the training database. Values of 3-4 seem to be ideal.
+statesize :: Int
+statesize = 4
+
 main = do
-  chain <- jcitieschain
+  chain <- gcitieschain
   let words = map (fst . (flip genWord chain)) (map mkStdGen [0..100])
   mapM_ putStrLn words
 
@@ -67,8 +74,8 @@ genChar rgen cd = (getNth n alist, newgen)
 
 nextState :: State -> Char -> State
 nextState state nextChar
-  | length state < 3 = state ++ [nextChar]
-  | otherwise        = tail state ++ [nextChar]
+  | length state < statesize = state ++ [nextChar]
+  | otherwise                = tail state ++ [nextChar]
 
 
 -- Read a file, one word per line.
@@ -80,7 +87,8 @@ trainChainFrom filename = do
 
 -- Train a Markov chain using a list of "example" words.
 makeChain :: [String] -> Chain
-makeChain wordlist = foldr insertPoint M.empty (concatMap fractureWord wordlist)
+makeChain wordlist = foldr insertPoint M.empty
+                           (concatMap (fractureWord statesize) wordlist)
   where insertPoint (state, sampleChar) chain = M.insert state
           (case M.lookup state chain of
               Nothing -> M.fromList [(sampleChar, 1)]
@@ -92,18 +100,19 @@ makeChain wordlist = foldr insertPoint M.empty (concatMap fractureWord wordlist)
               Nothing -> M.insert ch i cdist
               Just j -> M.insert ch (i+j) cdist
 
--- Break down a word into 3-character sequences and return the
+-- Break down a word into n-character sequences and return the
 -- sequences together with the letters that follow each. Example:
--- fractureWord "Dodo" = [("",'o'), ("D", 'o'), ("Do", 'd'),
---                        ("Dod", 'o'), ("odo", '\0')]
-fractureWord :: String -> [(State, Char)]
-fractureWord [] =         [([], '\0')]
-fractureWord (a:[]) =     [([], a), ([a], '\0')]
-fractureWord (a:b:[]) =   [([], a), ([a], b), ([a, b], '\0')]
-fractureWord (a:b:c:[]) = [([], a), ([a], b), ([a,b], c), ([a,b,c], '\0')]
-fractureWord list@(a:b:c:_) =
-    [([], a), ([a], b), ([a,b], c)] ++ fractureWord' list
+-- fractureWord 3 "Dodo" = [("",'o'), ("D", 'o'), ("Do", 'd'),
+--                          ("Dod", 'o'), ("odo", '\0')]
+fractureWord :: Int -> String -> [(State, Char)]
+fractureWord n str
+  | length str <= n  = (map (splitter . flip take str) [1..length str]) ++
+                       [(str, '\0')]
+  | otherwise        = map (splitter . flip take str) [1..n] ++ fractureWord' n str
+  where
+    splitter s      = (init s, last s)
 
-fractureWord' :: String -> [(String, Char)]
-fractureWord' (a:b:c:[]) = [([a,b,c], '\0')]
-fractureWord' (a:next@(b:c:d:_)) = ([a,b,c], d) : fractureWord' next
+fractureWord' :: Int -> String -> [(String, Char)]
+fractureWord' n str
+  | length str == n  = (str, '\0') : []
+  | otherwise        = (take n str, str !! n) : fractureWord' n (tail str)
