@@ -4,15 +4,14 @@ Wordgen creates random words or names using Markov chains. It takes a list of ex
 
 To run:
 
-1. 'cabal configure'
-2. 'cabal build'
-3. './dist/build/wordgen/wordgen'
+    $ cabal configure
+    $ cabal build
+    $ ./dist/build/wordgen/wordgen [-s <statesize>=4] [-n <numwords>=10] training-file
 
 Note that data structures are currently very inefficient, so you may have to adjust the stack size (to as high as 200M for the English dictionary.)
 
 # Issues and limitations
 
-- Command line options are not supported, so too many things are hard-coded.
 - It's very slow and eats a ton of memory.
 - Word length is not taken into account: often words get way too long.
 

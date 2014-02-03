@@ -3,53 +3,68 @@ module Main where
 import qualified Data.Map as M
 import System.Random
 import Control.Monad
+import Options.Applicative
 
 -- Words are generated using a Markov chain, one character at a
--- time. The probabilities are stored in a lookup table.
+-- time.
 type Chain = M.Map State CharDistribution
 
--- The state just contains the previous three characters, or fewer if
+-- The state is just the previous <statesize> characters, or fewer if
 -- we are near the beginning of a word.
--- TODO: word length should be stored in the state, too.
-type State = String
-
--- The distribution is not normalized.
-type CharDistribution = M.Map Char Int
-
--- Eg. An empty string returns the distribution of first letters, and
--- a two-character string returns the distribution of the third letter
--- given the first two. If three characters are supplied, no
--- assumptions are made about where in the word we are.  A '\0'
--- character output represents the end of a word.
 -- TODO: We could also keep other things in the state, like number of
 -- characters so far, number of syllables, etc.
+type State = String
+
+-- A '\0' character output represents the end of a word.
+-- The distribution is not normalized: it just holds the number of
+-- times each character was encoutered.
+type CharDistribution = M.Map Char Int
+
+-- statesize must be at least 1. Larger values will generate more
+-- realistic words, but if it's too large, the words will simply be
+-- exact copies from the training file. Values of 3-4 seem to be
+-- ideal.
+data Opts = Opts
+  { statesize :: Int
+  , numwords :: Int 
+  , trainingfile :: String }
+
+optParser :: Parser Opts
+optParser = Opts
+  <$> option
+      ( short 's'
+     <> value 4
+     <> metavar "<statesize>=4"
+     <> help "The number of characters to keep in state when generating words" )
+  <*> option
+      ( short 'n'
+     <> value 10
+     <> metavar "<numwords>=10"
+     <> help "The number of words to generate" )
+  <*> argument Just
+      ( metavar "training-file"
+     <> help "File to train from; should contain one sample word per line" )
 
 
--- TODO: parse command line options instead of hard-coding this
-engchain     = trainChainFrom "data/en/en-US.dic"
-ruchain      = trainChainFrom "data/ru/ru.txt"
-klingonchain = trainChainFrom "data/klingon/klingon.txt"
-gcitieschain = trainChainFrom "data/cities/germancities.txt"
-jcitieschain = trainChainFrom "data/cities/japancities.txt"
-
--- The number of characters to keep as state when generating words.
--- Must be at least 1. Larger values will generate more realistic
--- words, but if it's too large then the words will simply be exact
--- copies from the training database. Values of 3-4 seem to be ideal.
-statesize :: Int
-statesize = 4
-
-main = do
-  chain <- gcitieschain
-  let words = map (fst . (flip genWord chain)) (map mkStdGen [0..100])
+main = execParser opts >>= wordgen
+  where
+    opts = info (helper <*> optParser)
+      ( fullDesc
+     <> progDesc "Generate N random words similar to those in trainingfile"
+     <> header "wordgen - a random word generator based on Markov chains" )
+  
+wordgen (Opts ssize numwords filename) = do
+  chain <- trainChainFrom filename ssize
+  let words = map (fst . (flip (genWord ssize) chain))
+                  (map mkStdGen [1..numwords])
   mapM_ putStrLn words
 
 
-genWord :: RandomGen g => g -> Chain -> (String, g)
-genWord rgen chain = genWord' rgen "" chain
+genWord :: RandomGen g => Int -> g -> Chain -> (String, g)
+genWord ssize rgen chain = genWord' ssize rgen "" chain
 
-genWord' :: RandomGen g => g -> State -> Chain -> (String, g)
-genWord' rgen state chain =
+genWord' :: RandomGen g => Int -> g -> State -> Chain -> (String, g)
+genWord' ssize rgen state chain =
   let next = case (M.lookup state chain) of
          Nothing -> ('\NUL', rgen)
          Just cd -> genChar rgen cd
@@ -58,7 +73,7 @@ genWord' rgen state chain =
       ('\NUL', newrgen) -> ("", newrgen)
       (c, newrgen)      ->
         (c:rest, finalrgen) where
-          (rest, finalrgen) = genWord' newrgen (nextState state c) chain
+          (rest, finalrgen) = genWord' ssize newrgen (nextState ssize state c) chain
 
 -- We assume a non-empty distribution is given.
 genChar :: RandomGen g => g -> CharDistribution -> (Char, g)
@@ -72,23 +87,23 @@ genChar rgen cd = (getNth n alist, newgen)
       if n <= count then ch else getNth (n-count) (tail pool)
 
 
-nextState :: State -> Char -> State
-nextState state nextChar
-  | length state < statesize = state ++ [nextChar]
+nextState :: Int -> State -> Char -> State
+nextState ssize state nextChar
+  | length state < ssize = state ++ [nextChar]
   | otherwise                = tail state ++ [nextChar]
 
 
 -- Read a file, one word per line.
-trainChainFrom :: String -> IO (Chain)
-trainChainFrom filename = do
+trainChainFrom :: String -> Int -> IO (Chain)
+trainChainFrom filename ssize = do
   contents <- readFile filename
-  return $ makeChain $ lines contents
+  return $ makeChain ssize $ lines contents
   
 
 -- Train a Markov chain using a list of "example" words.
-makeChain :: [String] -> Chain
-makeChain wordlist = foldr insertPoint M.empty
-                           (concatMap (fractureWord statesize) wordlist)
+makeChain :: Int -> [String] -> Chain
+makeChain ssize wordlist = foldr insertPoint M.empty
+                           (concatMap (fractureWord ssize) wordlist)
   where insertPoint (state, sampleChar) chain = M.insert state
           (case M.lookup state chain of
               Nothing -> M.fromList [(sampleChar, 1)]

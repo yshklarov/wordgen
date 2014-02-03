@@ -9,6 +9,6 @@ build-type:          Simple
 cabal-version:       >=1.8
 
 executable wordgen
-  build-depends:     base == 4.*, random, containers
+  build-depends:     base == 4.*, random, containers, optparse-applicative
   main-is:           wordgen.hs
   ghc-options:       "-rtsopts"
