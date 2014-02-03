@@ -8,7 +8,7 @@ To run:
     $ cabal build
     $ ./dist/build/wordgen/wordgen [-s <statesize>=4] [-n <numwords>=10] training-file
 
-Note that data structures are currently very inefficient, so you may have to adjust the stack size (to as high as 200M for the English dictionary.)
+Note that data structures are currently very inefficient, so you may have to adjust the stack size.
 
 # Issues and limitations
 
@@ -47,29 +47,29 @@ Japanese cities:
 
 English words:
 
-    refacetic
-    biometriche
-    impotentinal
-    reverstatoes
-    blepsis
-    interpiest
-    stetholops
-    churization
-    iliases
-    serone
+    brandesline
+    volution
+    wess
+    baum
+    jeepsilo
+    timming
+    droport
+    disgrava
+    endota
+    glarientless
 
 Russian words:
 
-    прыснутыми
-    разрастланду
-    стланными
-    сверяющее
-    улучшенными
-    акклиматься
-    вытрясутствующейся
-    габардинице
-    задвигнутыми
-    извещаете
+    ефрейтор
+    средник
+    центригорох
+    высокока-коладка
+    дурно
+    переулок
+    алладающий
+    обдать
+    примень
+    размахиня
 
 Klingon words:
 
