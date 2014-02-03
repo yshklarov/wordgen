@@ -52,19 +52,26 @@ main = execParser opts >>= wordgen
       ( fullDesc
      <> progDesc "Generate N random words similar to those in trainingfile"
      <> header "wordgen - a random word generator based on Markov chains" )
-  
+
 wordgen (Opts ssize numwords filename) = do
-  chain <- trainChainFrom filename ssize
-  let words = map (fst . (flip (genWord ssize) chain))
-                  (map mkStdGen [1..numwords])
-  mapM_ putStrLn words
+    chain <- trainChainFrom filename ssize
+    let gw = genWord ssize chain
+    -- TODO: fix uglyness (how?)
+    let builder initgen =
+          foldr (\_ (strs, oldgen) ->
+                  (\(newstr, newgen) -> (newstr:strs, newgen))
+                  (gw oldgen))
+                ([], initgen)
+                [1..numwords]
+    words <- getStdRandom builder
+    mapM_ putStrLn words
 
 
-genWord :: RandomGen g => Int -> g -> Chain -> (String, g)
-genWord ssize rgen chain = genWord' ssize rgen "" chain
+genWord :: RandomGen g => Int -> Chain -> g -> (String, g)
+genWord ssize chain rgen = genWord' ssize "" chain rgen
 
-genWord' :: RandomGen g => Int -> g -> State -> Chain -> (String, g)
-genWord' ssize rgen state chain =
+genWord' :: RandomGen g => Int -> State -> Chain -> g -> (String, g)
+genWord' ssize state chain rgen =
   let next = case (M.lookup state chain) of
          Nothing -> ('\NUL', rgen)
          Just cd -> genChar rgen cd
@@ -73,7 +80,7 @@ genWord' ssize rgen state chain =
       ('\NUL', newrgen) -> ("", newrgen)
       (c, newrgen)      ->
         (c:rest, finalrgen) where
-          (rest, finalrgen) = genWord' ssize newrgen (nextState ssize state c) chain
+          (rest, finalrgen) = genWord' ssize (nextState ssize state c) chain newrgen
 
 -- We assume a non-empty distribution is given.
 genChar :: RandomGen g => g -> CharDistribution -> (Char, g)
