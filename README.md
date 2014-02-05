@@ -8,12 +8,10 @@ To run:
     $ cabal build
     $ ./dist/build/wordgen/wordgen [-s <statesize>=4] [-n <numwords>=10] training-file
 
-Note that data structures are currently very inefficient, so you may have to adjust the stack size.
-
 # Issues and limitations
 
-- It's very slow and eats a ton of memory.
-- Word length is not taken into account: often words get way too long.
+- Word length isn't taken into account, so some words get way too long.
+- It's not very fast, and eats lots of memery: you may need to adjust the stack size limit for larger training files.
 
 # Examples
 
